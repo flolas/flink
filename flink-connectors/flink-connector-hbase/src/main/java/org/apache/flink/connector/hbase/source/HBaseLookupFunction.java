@@ -33,10 +33,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
-import org.apache.hadoop.hbase.client.Connection;
-import org.apache.hadoop.hbase.client.ConnectionFactory;
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +54,7 @@ public class HBaseLookupFunction extends TableFunction<Row> {
 
 	private transient HBaseReadWriteHelper readHelper;
 	private transient Connection hConnection;
-	private transient HTable table;
+	private transient Table table;
 
 	public HBaseLookupFunction(
 			Configuration configuration,
@@ -109,7 +106,7 @@ public class HBaseLookupFunction extends TableFunction<Row> {
 		org.apache.hadoop.conf.Configuration config = prepareRuntimeConfiguration();
 		try {
 			hConnection = ConnectionFactory.createConnection(config);
-			table = (HTable) hConnection.getTable(TableName.valueOf(hTableName));
+			table = (Table) hConnection.getTable(TableName.valueOf(hTableName));
 		} catch (TableNotFoundException tnfe) {
 			LOG.error("Table '{}' not found ", hTableName, tnfe);
 			throw new RuntimeException("HBase table '" + hTableName + "' not found.", tnfe);
