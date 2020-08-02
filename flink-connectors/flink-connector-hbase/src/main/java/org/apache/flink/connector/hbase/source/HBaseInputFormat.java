@@ -78,7 +78,8 @@ public abstract class HBaseInputFormat<T extends Tuple> extends AbstractTableInp
 	 */
 	@Override
 	public void configure(Configuration parameters) {
-		table = createTable();
+		conn = createConn();
+		table = createTable(conn);
 		if (table != null) {
 			scan = getScanner();
 		}
@@ -87,15 +88,26 @@ public abstract class HBaseInputFormat<T extends Tuple> extends AbstractTableInp
 	/**
 	 * Create an {@link HTable} instance and set it into this format.
 	 */
-	private Table createTable() {
+	private Table createTable(Connection conn) {
+		try {
+			return conn.getTable(TableName.valueOf(getTableName()));
+		} catch (TableNotFoundException tnfe) {
+			LOG.error("The table " + getTableName() + " not found ", tnfe);
+			throw new RuntimeException("HBase table '" + getTableName() + "' not found.", tnfe);
+		} catch (IOException ioe) {
+			LOG.error("Exception while creating connection to HBase.", ioe);
+			throw new RuntimeException("Cannot create connection to HBase.", ioe);
+		}
+	}
+	/**
+	 * Create an {@link Connection} instance and set it into this format.
+	 */
+	private Connection createConn() {
 		LOG.info("Initializing HBaseConfiguration");
 		org.apache.hadoop.conf.Configuration hConf = getHadoopConfiguration();
 		try {
 			Connection connection = ConnectionFactory.createConnection(hConf);
-			return connection.getTable(TableName.valueOf(getTableName()));
-		} catch (TableNotFoundException tnfe) {
-			LOG.error("The table " + getTableName() + " not found ", tnfe);
-			throw new RuntimeException("HBase table '" + getTableName() + "' not found.", tnfe);
+			return connection;
 		} catch (IOException ioe) {
 			LOG.error("Exception while creating connection to HBase.", ioe);
 			throw new RuntimeException("Cannot create connection to HBase.", ioe);

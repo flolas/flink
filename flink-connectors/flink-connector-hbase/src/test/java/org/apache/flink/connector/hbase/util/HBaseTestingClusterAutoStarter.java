@@ -20,7 +20,6 @@
 
 package org.apache.flink.connector.hbase.util;
 
-import org.apache.commons.logging.impl.Log4JLogger;
 import org.apache.flink.test.util.AbstractTestBase;
 
 import org.apache.commons.logging.Log;
@@ -34,23 +33,16 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
-import org.apache.hadoop.hbase.client.*;
-import org.apache.hadoop.hbase.ipc.AbstractRpcClient;
-import org.apache.hadoop.hbase.ipc.RpcServer;
-import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.util.VersionUtil;
 import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -73,16 +65,19 @@ import static org.junit.Assert.assertTrue;
 // https://github.com/apache/hbase/blob/master/hbase-server/src/test/java/org/apache/hadoop/hbase/filter/FilterTestingCluster.java
 //
 public abstract class HBaseTestingClusterAutoStarter extends AbstractTestBase {
+
 	private static final Log LOG = LogFactory.getLog(HBaseTestingClusterAutoStarter.class);
 
 	private static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
-	private static Admin admin = null;
+	private static HBaseAdmin admin = null;
 	private static List<TableName> createdTables = new ArrayList<>();
-	private static Configuration conf = null;
-	private static String zookeeperQuorum = null;
+
+	private static Configuration conf;
 
 	protected static void createTable(TableName tableName, byte[][] columnFamilyName, byte[][] splitKeys) {
+		LOG.info("HBase minicluster: Creating table " + tableName.getNameAsString());
 
+		assertNotNull("HBaseAdmin is not initialized successfully.", admin);
 		HTableDescriptor desc = new HTableDescriptor(tableName);
 		for (byte[] fam : columnFamilyName) {
 			HColumnDescriptor colDef = new HColumnDescriptor(fam);
@@ -98,15 +93,15 @@ public abstract class HBaseTestingClusterAutoStarter extends AbstractTestBase {
 		}
 	}
 
-	protected static Table openTable(TableName tableName) throws IOException {
-		Table table = TEST_UTIL.getConnection().getTable(tableName);
+	protected static HTable openTable(TableName tableName) throws IOException {
+		HTable table = (HTable) admin.getConnection().getTable(tableName);
 		assertTrue("Fail to create the table", admin.tableExists(tableName));
 		return table;
 	}
 
 	private static void deleteTables() {
 		if (admin != null) {
-			for (TableName tableName: createdTables){
+			for (TableName tableName : createdTables) {
 				try {
 					if (admin.tableExists(tableName)) {
 						admin.disableTable(tableName);
@@ -119,7 +114,7 @@ public abstract class HBaseTestingClusterAutoStarter extends AbstractTestBase {
 		}
 	}
 
-	private static void initialize(Configuration conf) {
+	private static Configuration initialize(Configuration conf) {
 		conf = HBaseConfiguration.create(conf);
 		conf.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 1);
 		try {
@@ -131,31 +126,52 @@ public abstract class HBaseTestingClusterAutoStarter extends AbstractTestBase {
 		} catch (IOException e) {
 			assertNull("IOException", e);
 		}
+		return conf;
 	}
 
 	@BeforeClass
 	public static void setUp() throws Exception {
-		LOG.info("HBase minicluster: Starting");
-		TEST_UTIL.startMiniCluster(1);
-		initialize(TEST_UTIL.getConfiguration());
-		zookeeperQuorum = admin.getConfiguration().get("hbase.zookeeper.quorum");
-	}
+		// HBase 1.4 does not work with Hadoop 3
+		// because it uses Guava 12.0.1, Hadoop 3 uses Guava 27.0-jre.
+		// There is no Guava version in between that works with both.
+		Assume.assumeTrue("This test is skipped for Hadoop versions above 3", VersionUtil.compareVersions(System.getProperty("hadoop.version"), "3.0.0") < 0);
 
-	@AfterClass
-	public static void tearDown() throws Exception {
-		deleteTables();
-		TEST_UTIL.shutdownMiniCluster();
+		LOG.info("HBase minicluster: Starting");
+
+		TEST_UTIL.startMiniCluster(1);
+
+		// https://issues.apache.org/jira/browse/HBASE-11711
+		TEST_UTIL.getConfiguration().setInt("hbase.master.info.port", -1);
+
+		// Make sure the zookeeper quorum value contains the right port number (varies per run).
+		LOG.info("Hbase minicluster client port: " + TEST_UTIL.getZkCluster().getClientPort());
+		TEST_UTIL.getConfiguration().set("hbase.zookeeper.quorum", "localhost:" + TEST_UTIL.getZkCluster().getClientPort());
+
+		conf = initialize(TEST_UTIL.getConfiguration());
+		LOG.info("HBase minicluster: Running");
 	}
 
 	/**
 	 * Returns zookeeper quorum value contains the right port number (varies per run).
 	 */
 	protected static String getZookeeperQuorum() {
-		return zookeeperQuorum;
+		return "localhost:" + TEST_UTIL.getZkCluster().getClientPort();
 	}
 
 	public static Configuration getConf() {
 		return conf;
 	}
-}
 
+	@AfterClass
+	public static void tearDown() throws Exception {
+		if (conf == null) {
+			LOG.info("Skipping Hbase tear down. It was never started");
+			return;
+		}
+		LOG.info("HBase minicluster: Shutting down");
+		deleteTables();
+		TEST_UTIL.shutdownMiniCluster();
+		LOG.info("HBase minicluster: Down");
+	}
+
+}

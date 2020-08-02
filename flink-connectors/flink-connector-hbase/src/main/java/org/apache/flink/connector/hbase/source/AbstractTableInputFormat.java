@@ -111,6 +111,10 @@ abstract class AbstractTableInputFormat<T> extends RichInputFormat<T, TableInput
 
 	@Override
 	public void open(TableInputSplit split) throws IOException {
+		if (conn == null) {
+			throw new IOException("The HBase connection has not been opened! " +
+				"This needs to be done in configure().");
+		}
 		if (table == null) {
 			throw new IOException("The HBase table has not been opened! " +
 				"This needs to be done in configure().");

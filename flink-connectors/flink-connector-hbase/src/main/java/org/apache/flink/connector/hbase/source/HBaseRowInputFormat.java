@@ -62,6 +62,7 @@ public class HBaseRowInputFormat extends AbstractTableInputFormat<Row> implement
 		LOG.info("Initializing HBase configuration.");
 		// prepare hbase read helper
 		this.readHelper = new HBaseReadWriteHelper(schema);
+
 		connectToTable();
 		if (table != null) {
 			scan = getScanner();
@@ -85,7 +86,7 @@ public class HBaseRowInputFormat extends AbstractTableInputFormat<Row> implement
 
 	private void connectToTable() {
 		try {
-			Connection conn = ConnectionFactory.createConnection(getHadoopConfiguration());
+			super.conn = ConnectionFactory.createConnection(getHadoopConfiguration());
 			super.table = (Table) conn.getTable(TableName.valueOf(tableName));
 		} catch (TableNotFoundException tnfe) {
 			LOG.error("The table " + tableName + " not found ", tnfe);

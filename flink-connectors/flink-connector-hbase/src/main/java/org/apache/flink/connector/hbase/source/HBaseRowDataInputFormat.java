@@ -83,7 +83,7 @@ public class HBaseRowDataInputFormat extends AbstractTableInputFormat<RowData> {
 
 	private void connectToTable() {
 		try {
-			Connection conn = ConnectionFactory.createConnection(getHadoopConfiguration());
+			super.conn = ConnectionFactory.createConnection(getHadoopConfiguration());
 			super.table = (Table) conn.getTable(TableName.valueOf(tableName));
 		} catch (TableNotFoundException tnfe) {
 			LOG.error("The table " + tableName + " not found ", tnfe);
