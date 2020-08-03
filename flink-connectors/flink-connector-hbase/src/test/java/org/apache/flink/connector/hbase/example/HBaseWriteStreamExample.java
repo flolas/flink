@@ -25,7 +25,10 @@ import org.apache.flink.streaming.api.functions.source.SourceFunction;
 
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import java.io.IOException;
@@ -96,7 +99,7 @@ public class HBaseWriteStreamExample {
 		@Override
 		public void writeRecord(String record) throws IOException {
 			Put put = new Put(Bytes.toBytes(taskNumber + rowNumber));
-			put.addColumn(Bytes.toBytes("entry"), Bytes.toBytes("entry"),Bytes.toBytes(rowNumber));
+			put.addColumn(Bytes.toBytes("entry"), Bytes.toBytes("entry"), Bytes.toBytes(rowNumber));
 			rowNumber++;
 			table.put(put);
 		}

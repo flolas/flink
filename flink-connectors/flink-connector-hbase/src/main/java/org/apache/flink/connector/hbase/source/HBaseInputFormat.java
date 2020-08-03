@@ -25,12 +25,16 @@ import org.apache.flink.configuration.Configuration;
 
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
-import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
 
 import java.io.IOException;
 
 /**
- * {@link InputFormat} subclass that wraps the access for HTables.
+ * {@link InputFormat} subclass that wraps the access for Tabless.
  */
 @Experimental
 public abstract class HBaseInputFormat<T extends Tuple> extends AbstractTableInputFormat<T> {
@@ -68,7 +72,7 @@ public abstract class HBaseInputFormat<T extends Tuple> extends AbstractTableInp
 	protected abstract T mapResultToTuple(Result r);
 
 	/**
-	 * Creates a {@link Scan} object and opens the {@link HTable} connection.
+	 * Creates a {@link Scan} object and opens the {@link Table} connection.
 	 * These are opened here because they are needed in the createInputSplits
 	 * which is called before the openInputFormat method.
 	 * So the connection is opened in {@link #configure(Configuration)} and closed in {@link #closeInputFormat()}.
@@ -86,7 +90,7 @@ public abstract class HBaseInputFormat<T extends Tuple> extends AbstractTableInp
 	}
 
 	/**
-	 * Create an {@link HTable} instance and set it into this format.
+	 * Create an {@link Table} instance and set it into this format.
 	 */
 	private Table createTable(Connection conn) {
 		try {
@@ -95,10 +99,11 @@ public abstract class HBaseInputFormat<T extends Tuple> extends AbstractTableInp
 			LOG.error("The table " + getTableName() + " not found ", tnfe);
 			throw new RuntimeException("HBase table '" + getTableName() + "' not found.", tnfe);
 		} catch (IOException ioe) {
-			LOG.error("Exception while creating connection to HBase.", ioe);
-			throw new RuntimeException("Cannot create connection to HBase.", ioe);
+			LOG.error("Exception while creating connection to HBase Table.", ioe);
+			throw new RuntimeException("Cannot create connection to HBase Table.", ioe);
 		}
 	}
+
 	/**
 	 * Create an {@link Connection} instance and set it into this format.
 	 */

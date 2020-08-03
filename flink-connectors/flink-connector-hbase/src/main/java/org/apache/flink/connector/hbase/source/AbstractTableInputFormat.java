@@ -27,7 +27,11 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.hbase.util.HBaseConfigurationUtil;
 import org.apache.flink.core.io.InputSplitAssigner;
 
-import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.slf4j.Logger;
@@ -93,7 +97,7 @@ abstract class AbstractTableInputFormat<T> extends RichInputFormat<T, TableInput
 	protected abstract T mapResultToOutType(Result r);
 
 	/**
-	 * Creates a {@link Scan} object and opens the {@link HTable} connection.
+	 * Creates a {@link Scan} object and opens the {@link Table} connection.
 	 *
 	 * <p>These are opened here because they are needed in the createInputSplits
 	 * which is called before the openInputFormat method.
